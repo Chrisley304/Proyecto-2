@@ -1,4 +1,4 @@
-# Proyecto-2
+# Proyecto 2 EyPC
 
 Proyecto para la materia de Estructura y Programación de Computadoras de la Facultad de Ingeniería de la UNAM, el cual consiste en crear un programa en lenguaje ensamblador para el procesador MC68HC11 de Motorola.
 
