@@ -31,14 +31,8 @@ DUMP  EQU $0050
       LDS #$00FF
       JSR SERIAL
 
-START
-      CLR U1
-      CLR U2
-      CLR U3
-      CLR U4
-      CLR CONT
-      LDX DUMP
-
+START 
+      JSR LIMPIAMEMO
       JSR ENTRADA 
 
       LDAA U1
@@ -55,8 +49,9 @@ START
       JMP ESPERAOK
 
 ERROR
+      JSR LIMPIAYERROR
       JSR ESCRIBEERROR
-
+      
 ESPERAOK
       JSR ESPERAOK1
       JMP START
@@ -102,11 +97,13 @@ CICLO
       JSR ESROMANO
       JSR NOESNINGUNO
 
+      LDAA ORDEN
+      STAA $00,X
+      INX 
+
       CMPA #'=
       BNE ENTRADA
       
-      STAA DUMP,X
-      INX
       RTS
 
 ***********************************
@@ -132,9 +129,6 @@ ESDIGITO
       ADDA #$1
       STAA CONT
       TBA
-
-      STAA DUMP,X
-      INX
 
 NOESDIGITO
       RTS
@@ -185,9 +179,6 @@ SIESROMANO
       ADDA #$1
       STAA CONT
       TBA
-
-      STAA DUMP,X
-      INX 
 
 NOESROMANO
       RTS
@@ -321,6 +312,62 @@ SIGUEK
       CMPA #'K
       BNE ESPERAOK1
 
+      RTS
+
+
+***********************************
+* LIMPIAYERROR
+***********************************
+
+LIMPIAYERROR
+      LDX #DUMP
+
+AVANZA
+      LDAA $00,x
+      INX
+      CMPA #'=
+      BNE AVANZA
+      PSHX    
+
+LIMPIA
+      BSET $00,x,#$FF
+      INX
+      CMPX #$00F0
+      BNE LIMPIA
+
+      PULX
+      LDAA #'E
+      STAA $00,x
+
+      INX
+      LDAA #'R
+      STAA $00,x
+
+      INX
+      LDAA #'R
+      STAA $00,x
+
+      INX
+      LDAA #'O
+      STAA $00,x
+
+      INX
+      LDAA #'R
+      STAA $00,x
+
+      RTS
+
+***********************************
+* LIMPIAMEMO
+***********************************
+LIMPIAMEMO
+      LDX #$00
+LIMPIAR
+      BSET $00,x,#$FF
+      INX
+      CMPX #$00F0
+      BNE LIMPIAR
+      LDX #DUMP
       RTS
 ***********************************
 * ATENCION A INTERRUPCION SERIAL
