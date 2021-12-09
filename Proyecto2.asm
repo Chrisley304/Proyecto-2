@@ -45,13 +45,21 @@ START
 
       LDAA U3
       BNE ERROR
+      
+      JSR COMPRUEBA
+
+      LDAA U3
+      BNE ERROR
+      
+    * JSR CONVIERTE
+
+     * JSR ESCRIBELETRAS
 
       JMP ESPERAOK
 
 ERROR
       JSR LIMPIAYERROR
-      JSR ESCRIBEERROR
-      
+
 ESPERAOK
       JSR ESPERAOK1
       JMP START
@@ -239,47 +247,6 @@ FINLONGITUD
       RTS
 
 ***********************************
-* ESCRIBE ERROR
-***********************************
-ESCRIBEERROR
-      LDX #SCSR
-      LDAA SCSR
-      LDAA #'E
-      STAA   SCDR
-C1
-      BRCLR $00,X,#$80 C1
-
-      LDX #SCSR
-      LDAA SCSR
-      LDAA #'R
-      STAA   SCDR
-C2
-      BRCLR $00,X,#$80 C2
-
-      LDX #SCSR
-      LDAA SCSR
-      LDAA #'R
-      STAA   SCDR
-C3
-      BRCLR $00,X,#$80 C3
-
-
-      LDX #SCSR
-      LDAA SCSR
-      LDAA #'O
-      STAA   SCDR
-C4
-      BRCLR $00,X,#$80 C4
-
-      LDX #SCSR
-      LDAA SCSR
-      LDAA #'R
-      STAA   SCDR
-C5
-      BRCLR $00,X,#$80 C5
-      RTS
-
-***********************************
 * ESPERAOK
 ***********************************
 
@@ -332,7 +299,7 @@ AVANZA
 LIMPIA
       BSET $00,x,#$FF
       INX
-      CMPX #$00F0
+      CMPX #$009D
       BNE LIMPIA
 
       PULX
@@ -360,15 +327,678 @@ LIMPIA
 ***********************************
 * LIMPIAMEMO
 ***********************************
+
 LIMPIAMEMO
       LDX #$00
 LIMPIAR
       BSET $00,x,#$FF
       INX
-      CMPX #$00F0
+      CMPX #$009D
       BNE LIMPIAR
       LDX #DUMP
       RTS
+
+
+***********************************
+* COMPRUEBA
+***********************************
+COMPRUEBA 
+      CLR U3
+      LDAA U1
+      CMPA #$1
+      BNE COMPRUEBA ROMANO
+
+      JSR COMPDIG
+      RTS
+
+COMPRUEBAROMANO
+      JSR COMPROMANO
+      RTS
+
+***********************************
+* COMPRUEBA ROMANO
+***********************************
+COMPROMANO
+
+      RTS
+
+***********************************
+* COMPRUEBA DIGITO
+***********************************
+COMPDIG
+      LDAA DUMP
+      CMPA #'0
+      BNE DIGCORRECTO
+      LDAA #$1
+      STAA U3
+
+DIGCORRECTO
+  
+      RTS
+
+***********************************
+* ESCRIBE LETRAS
+***********************************
+ESCRIBELETRAS
+      JSR INICIONUM
+      LDY #$0070
+OTRO
+      LDAB CONT
+      BEQ FINDENUM
+
+      LDAA $00,x
+      INX
+      JSR ESCRIBE
+
+FINDENUM
+      RTS
+
+
+***********************************
+* ESCRIBE NUM CORRESPONDIENTE
+***********************************
+ESCRIBE
+      LDAB CONT
+      CMPB #$4
+      BNE CENTENAS
+
+      DECB
+      STAB CONT
+      
+      CMPA #'1
+      BNE NOMIL
+      JSR ESCRIBEMIL
+      JSR ESCRIBEESPACIO
+      RTS
+
+NOMIL
+      JSR ESCRIBEUNIDAD
+      JSR ESCRIBEESPACIO
+      JSR ESCRIBEMIL
+      JSR ESCRIBEESPACIO
+      RTS
+      
+
+CENTENAS
+      CMPB #$3
+      BNE DECENAS
+
+      DECB
+      STAB CONT
+
+      CMPA #'1
+      BNE NOCIEN
+      JSR ESCRIBECIEN
+      LDAB #$1          *FLAG = 1
+      STAB U3
+      RTS
+
+
+NOCIEN
+      JSR ESCRIBEUNIDAD
+      JSR ESCRIBECIENTOS
+      JSR ESCRIBEESPACIO
+      RTS
+
+
+DECENAS
+      CMPB #$2
+      BNE UNIDADES
+
+      DECB
+      STAB CONT
+
+      CMPA #'0
+      BNE SIDECENAS
+      RTS
+
+SIDECENAS
+      CMPA #'2
+      BGT DECENAHIGH
+      LDAB #$0
+      STAB CONT
+      BEQ VEINTE
+      JSR ESCRIBEDIEZ 
+      RTS
+
+VEINTE
+      JSR ESCRIBEVEINTE
+      RTS
+
+DECENAHIGH
+      JSR ESCRIBEDECENA
+      JSR ESCRIBEESPACIO
+      RTS
+
+
+UNIDADES
+      CMPA #'0
+      DECB
+      STAB CONT
+      BNE SIUNIDAD
+      RTS
+
+SIUNIDAD
+      JSR ESCRIBEUNIDAD
+      RTS
+
+
+***********************************
+* INICIO NUM
+***********************************
+INICIONUM
+      CLR U3
+      LDX DUMP
+
+NEXTNUM
+      LDAA $00,X
+      STAA ORDEN
+      JSR ESDIGITO
+      LDAA U3
+
+      BEQ FOUNDINICIO
+      INX
+      JMP NEXTNUM
+
+FOUNDINICIO
+      PSHX *INICIO DE NUMERO
+      CLR CONT
+      CLR U3
+
+CUENTATAMANO
+      CLR U3
+      LDAA $00,X
+      STAA ORDEN
+      JSR ESDIGITO
+      LDAA U3
+      BNE CUENTATAMANO
+
+      PULX
+      RTS
+
+***********************************
+* ESCRIBEMIL
+***********************************
+ESCRIBEMIL
+      INY
+      LDAA #'m
+      STAA $00,y
+
+      INY
+      LDAA #'i
+      STAA $00,y
+
+      INY
+      LDAA #'l
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBEESPACIO
+***********************************
+ESCRIBEESPACIO
+      INY
+      LDAA #$20
+      STAA $00,y
+      RTS
+
+
+***********************************
+* ESCRIBECIEN
+***********************************
+ESCRIBECIEN
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'i
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      INY
+      LDAA #'n
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBECIENTOS
+***********************************
+ESCRIBECIENTOS
+      JSR ESCRIBECIEN
+
+      INY
+      LDAA #'t
+      STAA $00,y
+
+      INY
+      LDAA #'o
+      STAA $00,y
+
+      INY
+      LDAA #'s
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBEUNO
+***********************************
+ESCRIBEUNO
+      INY
+      LDAA #'u
+      STAA $00,y
+
+      INY
+      LDAA #'n
+      STAA $00,y
+
+      INY
+      LDAA #'o
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBEDOS
+***********************************
+ESCRIBEDOS
+      INY
+      LDAA #'d
+      STAA $00,y
+
+      INY
+      LDAA #'o
+      STAA $00,y
+
+      INY
+      LDAA #'s
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBETRES
+***********************************
+ESCRIBETRES
+      INY
+      LDAA #'t
+      STAA $00,y
+
+      INY
+      LDAA #'r
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      INY
+      LDAA #'s
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBECUATRO
+***********************************
+ESCRIBECUATRO
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'u
+      STAA $00,y
+
+      INY
+      LDAA #'a
+      STAA $00,y
+
+      INY
+      LDAA #'t
+      STAA $00,y
+
+      INY
+      LDAA #'r
+      STAA $00,y
+
+      INY
+      LDAA #'o
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBECINCO
+***********************************
+ESCRIBECINCO
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'i
+      STAA $00,y
+
+      INY
+      LDAA #'n
+      STAA $00,y
+
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'o
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBESEIS
+***********************************
+ESCRIBESEIS
+      INY
+      LDAA #'s
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      INY
+      LDAA #'i
+      STAA $00,y
+
+      INY
+      LDAA #'s
+      STAA $00,y
+
+      RTS
+
+***********************************
+* ESCRIBESIETE
+***********************************
+ESCRIBESIETE
+      INY
+      LDAA #'s
+      STAA $00,y
+
+      INY
+      LDAA #'i
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      INY
+      LDAA #'t
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      RTS
+
+***********************************
+* ESCRIBEOCHO
+***********************************
+ESCRIBEOCHO
+      INY
+      LDAA #'o
+      STAA $00,y
+
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'h
+      STAA $00,y
+
+      INY
+      LDAA #'o
+      STAA $00,y
+
+      RTS
+
+***********************************
+* ESCRIBENUEVE
+***********************************
+ESCRIBENUEVE
+      INY
+      LDAA #'n
+      STAA $00,y
+
+      INY
+      LDAA #'u
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      INY
+      LDAA #'v
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      RTS
+
+***********************************
+* ESCRIBEONCE
+***********************************
+ESCRIBEONCE
+      INY
+      LDAA #'o
+      STAA $00,y
+
+      INY
+      LDAA #'n
+      STAA $00,y
+
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      RTS
+
+
+***********************************
+* ESCRIBEDOCE
+***********************************
+ESCRIBEDOCE
+      INY
+      LDAA #'d
+      STAA $00,y
+
+      INY
+      LDAA #'o
+      STAA $00,y
+
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      RTS
+
+***********************************
+* ESCRIBETRECE
+***********************************
+ESCRIBETRECE
+      INY
+      LDAA #'t
+      STAA $00,y
+
+      INY
+      LDAA #'r
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      RTS
+
+***********************************
+* ESCRIBECATORCE
+***********************************
+ESCRIBECATORCE
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'a
+      STAA $00,y
+
+      INY
+      LDAA #'t
+      STAA $00,y
+
+      INY
+      LDAA #'o
+      STAA $00,y
+
+      INY
+      LDAA #'r
+      STAA $00,y
+
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBEQUINCE
+***********************************
+ESCRIBEQUINCE
+      INY
+      LDAA #'q
+      STAA $00,y
+
+      INY
+      LDAA #'u
+      STAA $00,y
+
+      INY
+      LDAA #'i
+      STAA $00,y
+
+      INY
+      LDAA #'n
+      STAA $00,y
+
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+      RTS
+
+***********************************
+* ESCRIBEDICEI
+***********************************
+ESCRIBEDIECI
+      INY
+      LDAA #'d
+      STAA $00,y
+
+      INY
+      LDAA #'i
+      STAA $00,y
+
+      INY
+      LDAA #'e
+      STAA $00,y
+
+      INY
+      LDAA #'c
+      STAA $00,y
+
+      INY
+      LDAA #'i
+      STAA $00,y
+
+      RTS
+
+***********************************
+* ESCRIBEDICEISEIS
+***********************************
+ESCRIBEDICEISEIS
+      JSR ESCRIBEDIECI
+
+      INY
+      LDAA #'s
+      STAA $00,y
+
+      INY
+      LDAA #'E
+      STAA $00,y
+
+      INY
+      LDAA #'i
+      STAA $00,y
+
+      INY
+      LDAA #'s
+      STAA $00,y
+
+      RTS
+
+***********************************
+* ESCRIBEUNIDAD
+***********************************
+ESCRIBEUNIDAD
+
+      RTS
+
+***********************************
+* ESCRIBEDIEZ
+***********************************
+ESCRIBEDIEZ
+
+      RTS
+
+***********************************
+* ESCRIBEVEINTE
+***********************************
+ESCRIBEVEINTE
+
+      RTS
+
+***********************************
+* ESCRIBEDECENA
+***********************************
+ESCRIBEDECENA
+
+      RTS
+
 ***********************************
 * ATENCION A INTERRUPCION SERIAL
 ***********************************
