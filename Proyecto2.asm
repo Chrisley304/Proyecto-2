@@ -34,6 +34,11 @@ DUMP  EQU $0050
       JSR SERIAL
 
 START 
+      CLR U1
+      CLR U2
+      CLR U3
+      CLR U4
+      CLR CONT
       JSR LIMPIAMEMO
       JSR ENTRADA 
 
