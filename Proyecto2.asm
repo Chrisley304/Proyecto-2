@@ -55,6 +55,8 @@ START
       
       JSR COMPRUEBA
 
+      JSR CONVIERTE
+
       LDAA U3
       BNE ERROR
 
@@ -237,17 +239,11 @@ FINLONGITUD
 COMPRUEBA 
       CLR U3
       LDAA U1
-      CMPA #$1
-      BNE COMPROMANO
-
+      CMPA #$1    
+      BNE SIGUET
       JSR COMPDIG
-      RTS
 
-***********************************
-* COMPRUEBA ROMANO   <- convierte a decimal, lo escribe y prende U3 si error
-***********************************
-COMPROMANO
-
+SIGUET
       RTS
 
 ***********************************
@@ -264,9 +260,441 @@ DIGCORRECTO
   
       RTS
 
+*************
+* CONVIERTE 
+*************
+CONVIERTE
+      CLR U3 * Bandera error
+      LDAA DUMP
+      ADDA CONT
+      ADDA #2 * = y _vacio
+      STAA RESULTADO
+      LDAA U1 * Bandera digitos
+      CMPA #$1 
+      BNE CONVDIGITO  * Si es digito (Hay RTS dentro)
+      JSR CONVROMANO  * Si es romano
+      LDAB U3
+      CMPB #$1 * Se verifica si no hay un error
+      BNE TRANSFORMACIONHEX *No hay error y escribe el numero en memoria en ASCII
+      RTS
+*************
+* CONVIERTE ROMANO
+*************
+
+CONVROMANO 
+      LDD #DUMP   * Direccion base ($0050)
+      ADDB CONT    * $Direccion base + N caracteres
+      XGDY
+      LDAA $00,Y  * Arreglo[n] -> CONT contiene el numero de caracteres que ingresaron    
+
+      STAA CARACTER * Almacena el caracter en posicion actual
+      CLR ANTERIOR * Almacena el caracter en pos. anterior
+      LDX #0      * X -> CONT=0
+      CLR NUM 
+      CLR REF * CIV
+      CLR REFT
+      CLR REFC
+      CLR REFL
+      CLR REFD
+      CLR REFM
+      * En este punto A tiene el valor de un caracter romano (i)
+      
+FOR
+      LDAA CONT
+      ADDA #DUMP
+      LDAB #DUMP 
+      CBA * Se comprueba que no este fuera del arreglo i<n
+      BEQ NOENTRA
+      JSR FOREACH
+      LDAA CONT
+      SUBA #1
+      STAA CONT
+      LDAA #$1
+      LDAB U3
+      CBA * Se verifica si no hay un error
+      BEQ NOENTRA
+      JMP FOR
+
+NOENTRA
+      RTS * Termina ciclo y termina de convertir
+
+FOREACH
+      LDAA CARACTER
+
+      LDAB #'I 
+      CBA            
+      BEQ ROMI
+
+      LDAB #'V
+      CBA
+      BEQ ROMV
+
+      LDAB #'X
+      CBA
+      BEQ ROMX
+
+      LDAB #'L
+      CBA
+      BEQ ROML
+
+      LDAB #'C
+      CBA
+      BEQ ROMC
+
+      LDAB #'D
+      CBA
+      BEQ ROMD
+
+      LDAB #'M
+      CBA
+      BNE ROMM
+
+      * si no es ninguno de los casos, es un error
+      JMP ERRORCONV
+
+
+ROMI
+      LDAB REF
+      CMPB #3
+      BGE ERRORCONV   * Si REF>= 3 error
+      INX *NUM ++
+      LDAA REF
+      ADDA #1
+      STAA REF * REF = REF + 1
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]    
+      STAA CARACTER  
+      RTS
+
+ROMV
+      LDAB REF
+      CMPB #4
+      BGE ERRORCONV   * Si REF>= 4 error
+      LDAB #5
+      ABX * NUM = NUM + 5
+      LDAA REF
+      ADDA #1
+      STAA REF * REF = REF + 1
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+      CMPA #'I
+      BNE SIGROMV 
+      LDAA REF
+      CMPA #1
+      BNE ERRORCONV
+      DEX * NUM - 1
+      ADDA #1
+      STAA REF * REF++
+      LDAA CONT
+      SUBA #1
+      STAA CONT * recorre el i
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+
+SIGROMV
+      RTS
+
+ROMX
+      LDAB REF
+      CMPB #3
+      BGE ERRORCONV   * Si REF>= 3 error
+      LDAB #10
+      ABX * NUM = NUM + 10
+      ADDB #1
+      STAB REF * REF = REF +1
+      LDAA REFT
+      ADDA #1
+      STAA REFT * REFT = REFT + 1
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+      CMPA #'I * CAR = I ?
+      BNE SIGROMX
+      LDAA REFT
+      CMPA #1
+      BNE ERRORCONV
+      DEX * NUM = NUM - 1
+      ADDA #1
+      STAA REFT * REFT ++
+      LDAB REF
+      ADDB #1
+      STAB REF *REF++
+      LDAA CONT
+      SUBA #1
+      STAA CONT * recorre el i
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+
+SIGROMX
+      RTS
+
+ROML
+      LDAB #50
+      ABX * NUM = NUM +50
+      LDAA REF
+      ADDA #1
+      STAA REF
+      LDAB REFL
+      ADDB #1
+      STAB REFL
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+      CMPA #'X
+      BNE SIGROML
+      CMPB #1 * REFL =1?
+      BNE ERRORCONV
+      LDAA REFT
+      CMPA #0
+      BNE ERRORCONV
+      XGDX * Para restarle 10 a X, se debe intercambiar con D
+      SUBD #10 * D-10
+      XGDX * NUM = D-10
+      LDAA REF
+      ADDA #1
+      STAA REF
+      LDAA CONT * Se aumenta el contador del ciclo for
+      SUBA #1
+      STAA CONT * recorre el i
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+
+SIGROML
+      RTS
+
+ROMC
+      LDAB REFC
+      CMPB #3
+      BGE ERRORCONV   * Si REF>= 3 error
+      LDAB #100
+      ABX * NUM = NUM + 100
+      LDAA REF
+      ADDA #1
+      STAA REF
+      LDAB REFC
+      ADDB #1
+      STAB REFC
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+      CMPA #'X * CAR = X ?
+      BNE SIGROMC
+      LDAA REFC
+      CMPA #1
+      BNE ERRORCONV
+      XGDX * Para restarle 10 a X, se debe intercambiar con D
+      SUBD #10 * D-10
+      XGDX * NUM = D-10
+      LDAA REF
+      ADDA #1
+      STAA REF
+      LDAA REFC
+      ADDA #1
+      STAA REFC
+      LDAA CONT * Se aumenta el contador del ciclo for
+      SUBA #1
+      STAA CONT * recorre el i
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+      
+SIGROMC
+      RTS
+
+ROMD
+      XGDX * Para sumarle 500 a X, se debe intercambiar con D
+      ADDD #500 * D+500
+      XGDX * NUM = D+500
+      LDAA REF
+      ADDA #1
+      STAA REF
+      LDAB REFD
+      ADDB #1
+      STAB REFD
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+      CMPA #'C * CAR = X ?
+      BNE SIGROMD
+      LDAB REFC
+      CMPB #0
+      BNE ERRORCONV
+      LDAB REFD
+      CMPB #1
+      BNE ERRORCONV
+      XGDX * Para restarle 10 a X, se debe intercambiar con D
+      SUBD #100 * D-100
+      XGDX * NUM = D-100
+      LDAA REF
+      ADDA #1
+      STAA REF
+      LDAA REFC
+      ADDA #1
+      STAA REFC
+      LDAA CONT * Se aumenta el contador del ciclo for
+      SUBA #1
+      STAA CONT * recorre el i
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+
+SIGROMD
+      RTS
+
+ROMM
+      XGDX * Para sumarle 500 a X, se debe intercambiar con D
+      ADDD #1000 * D+1000
+      XGDX * NUM = D+1000
+      LDAA REF
+      ADDA #1
+      STAA REF
+      LDAB REFM
+      ADDB #1
+      STAB REFM
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+      CMPA #'C * CAR = X ?
+      BNE SIGROMD
+      LDAB REFM
+      CMPB #1
+      BNE ERRORCONV
+      XGDX * Para restarle 10 a X, se debe intercambiar con D
+      SUBD #100 * D-100
+      XGDX * NUM = D-100
+      LDAA REF
+      ADDA #1
+      STAA REF
+      LDAA REFM
+      ADDA #1
+      STAA REFM
+      LDAA CONT * Se aumenta el contador del ciclo for
+      SUBA #1
+      STAA CONT * recorre el i
+      DEY * Recorre el arreglo 
+      LDAA $00,Y  * Arreglo[n]
+      STAA CARACTER
+  
+SIGROMD  
+      RTS
+
+*************
+* CONVIERTE DIGITO
+*************
+
+CONVDIGITO 
+      * Pendiente
+
+ITERA
+      LDAA CONT
+      SUBA #1
+      STAA CONT * recorre el i
+      RTS
+
+*************
+* ERROR en CONVIERTE
+*************
+ERRORCONV
+      LDAA #$1
+      STAA U3
+      RTS
+
+
 * FUNCIONES TRANSFORMACION	**********************************************************************
+* Le llega el numero hexadecimal a colocar en decimal en la memoria en D
+TRANSFORMACIONHEX 
+      LDX #1000 * CARGAMOS DIVISOR
+      LDY #RESULTADO * UBICACION PARA EMPEZAR A GUARDAR
+      IDIV      * D -> RESIDUO, X -> ENTERO
+      PSHA      * GUARDAMOS RESIDUO EN PILA
+      PSHB
+
+      CPX #$0000 * SI X ES 0, VAMOS A CENTENAS
+      BEQ CENT
 
 
+      XGDX       * TOTAL EN B
+      ADDB #$30
+      STAB $00,y * GUARDAMOS TOTAL RESPECTO A Y
+      INY        * SIGUIENTE LOCALIDAD PARA GUARDAR SIGUIENTE NUM
+      LDAA #$1   * ACTIVAMOS BANDERA DE YA VIMOS ALGO 
+      STAA U1     * ACTUALIZAMOS BANDERA
+
+CENT
+      LDX #100   * CARGAMOS DIVISOR
+      PULB       * CARGAMOS RESIDUO DE PASADA, AHORA DIVIDENDO
+      PULA
+      IDIV       * D -> RESIDUO, X -> ENTERO
+      PSHA       * GUARDAMOS RESIDUO EN PILA
+      PSHB
+
+      CPX #$0000  * SI X ES DIFERENTE DE 0, NO CHECAMOS BANDERA
+      BNE BANDERA1
+ 
+      LDAA U1    * CARGAMOS BANDERA
+      BEQ DEC    * SI BANDERA ES 0 VAMOS A DECENAS
+
+BANDERA1
+
+      XGDX       * TOTAL EN B
+      ADDB #$30
+      STAB $00,y * GUARDAMOS TOTAL RESPECTO A Y
+      INY        * SIGUIENTE LOCALIDAD PARA GUARDAR SIGUIENTE NUM
+      LDAA #$1   * ACTIVAMOS BANDERA DE YA VIMOS ALGO 
+      STAA U1     * ACTUALIZAMOS BANDERA
+      
+DEC
+      LDX #10    * CARGAMOS DIVISOR
+      PULB       * CARGAMOS RESIDUO DE PASADA, AHORA DIVIDENDO
+      PULA
+      IDIV       * D -> RESIDUO, X -> ENTERO
+      PSHA       * GUARDAMOS RESIDUO EN PILA
+      PSHB
+
+      CPX #$0000  * SI X ES DIFERENTE DE 0, NO CHECAMOS BANDERA
+      BNE BANDERA2
+ 
+      LDAA U1    * CARGAMOS BANDERA
+      BEQ UNI    * SI BANDERA ES 0 VAMOS A DECENAS
+
+BANDERA2
+
+      XGDX       * TOTAL EN B
+      ADDB #$30
+      STAB $00,y * GUARDAMOS TOTAL RESPECTO A Y
+      INY        * SIGUIENTE LOCALIDAD PARA GUARDAR SIGUIENTE NUM
+      LDAA #$1   * ACTIVAMOS BANDERA DE YA VIMOS ALGO 
+      STAA U1     * ACTUALIZAMOS BANDERA
+UNI
+
+      LDX #1     * CARGAMOS DIVISOR
+      PULB       * CARGAMOS RESIDUO DE PASADA, AHORA DIVIDENDO
+      PULA
+      IDIV       * D -> RESIDUO, X -> ENTERO
+      PSHA       * GUARDAMOS RESIDUO EN PILA
+      PSHB
+
+      CPX #$0000  * SI X ES DIFERENTE DE 0, NO CHECAMOS BANDERA
+      BNE BANDERA3
+ 
+      LDAA U1    * CARGAMOS BANDERA
+      BEQ FIN    * SI BANDERA ES 0 VAMOS A DECENAS
+
+BANDERA3
+
+      XGDX       * TOTAL EN B
+      ADDB #$30
+      STAB $00,y * GUARDAMOS TOTAL RESPECTO A Y
+      INY        * SIGUIENTE LOCALIDAD PARA GUARDAR SIGUIENTE NUM
+      LDAA #$1   * ACTIVAMOS BANDERA DE YA VIMOS ALGO 
+      STAA U1     * ACTUALIZAMOS BANDERA
+
+FIN
+      RTS
 
 
 * FUNCIONES ESCRITURA LETRAS	**********************************************************************
