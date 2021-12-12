@@ -388,7 +388,6 @@ ERRORCROM
       JSR ERRORCONV
       RTS
 
-
 ROMI
       LDAB REF
       CMPB #3
@@ -419,7 +418,7 @@ ROMV
       LDAA $00,Y  * Arreglo[n]
       STAA CARACTER
       CMPA #'I
-      BNE SIGROMV 
+      BNE SIGROMV
       LDAA REF
       CMPA #1
       BNE ERRV
@@ -645,8 +644,389 @@ ERRM
 * CONVIERTE DIGITO
 *************
 
-CONVDIGITO 
-      * Pendiente
+CONVDIGITO  
+      LDD #DUMP   * Direccion base ($0050)
+      XGDY
+      LDAA $00,Y  * Arreglo[n] -> CONT contiene el numero de caracteres que ingresaron    
+      SUBA #$30 * Se resta 30 debido a que en ASCII los numeros estan del 30-39
+      *LDX #0      * X -> CONT=0
+      CLR DIFZ
+      LDD #$0000
+      ADDB RESULTADO   * Direccion a escribir
+      XGDY
+      LDX #DUMP
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+
+FORDIGI
+      LDAA NUM
+      LDAB #DUMP 
+      ADDB CONT
+      CMPB #DUMP * Se comprueba que no este fuera del arreglo i<n
+      BLE NOENTRADIGI
+      JSR FOREACHDEC
+      LDAB CONT
+      SUBB #1
+      STAB CONT
+      LDAB U3
+      CMPB #$1 * Se verifica si no hay un error
+      BEQ NOENTRADIGI
+      JMP FORDIGI
+
+NOENTRADIGI
+      RTS
+
+FOREACHDEC
+      LDAA NUM
+      LDAB CONT
+      CMPA #0
+      BEQ NEXTDEC
+
+FORMILES
+      CMPB #4
+      BNE FORCENT 
+      CLR DIFZ
+      JSR MILESDEC
+      RTS
+
+FORCENT
+      CMPB #3
+      BNE FORDEC
+      CLR DIFZ
+      JSR CENTDEC
+      RTS
+
+FORDEC
+      CMPB #2
+      BNE FORUNI
+      CLR DIFZ
+      JSR DECDEC
+      RTS
+
+FORUNI
+      CLR DIFZ
+      JSR UNIDEC
+
+NEXTDEC
+      RTS
+
+
+***********
+* MILES
+***********
+
+MILESDEC
+      LDAA NUM
+      CMPA DIFZ
+      BLE EXITMILES *IF i<= Num
+      LDAB #'M
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #1
+      STAA DIFZ
+      JMP MILESDEC
+
+EXITMILES
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+***********
+* CENTENAS
+***********
+
+CENTDEC
+      LDAA NUM
+      * HAY 5 CASOS POSIBLES 100-300 (1)-> C^n ; 400 (2)-> CD ; 500 (3)->  ;900 (4)-> CM; 600-800 (5)-> DC^n
+      CMPA #3
+      BLE CENTUNO
+      CMPA #4
+      BEQ CENTDOS
+      CMPA #5
+      BEQ CENTTRES
+      CMPA #9
+      BEQ CENTCUATRO
+      JSR CENTCINCO
+      RTS
+
+CENTUNO
+      LDAA NUM
+      CMPA DIFZ
+      BLE  ECUNO *If i<= Num
+      LDAB #'C
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #1
+      STAA DIFZ
+      JMP CENTUNO
+
+ECUNO
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+CENTDOS
+      LDAB #'C
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAB #'D
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+CENTTRES
+      LDAB #'D
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+CENTCUATRO
+      LDAB #'C
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAB #'M
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+CENTCINCO
+      LDAB #'D
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #5
+      STAA DIFZ
+CICLOCENTCINCO
+      LDAA NUM
+      CMPA DIFZ
+      BLE  ECCINCO *If i<= Num
+      LDAB #'C
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #1
+      STAA DIFZ
+      JMP CICLOCENTCINCO
+ECCINCO
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+***********
+* DECENAS
+***********
+
+DECDEC
+      LDAA NUM
+      * HAY 5 CASOS POSIBLES 10-30 (1)-> X^n ; 40 (2)-> XL ; 50 (3)-> L ;90 (4)-> XC; 60-80 (5)-> LX^n
+      CMPA #3
+      BLE DECUNO
+      CMPA #4
+      BEQ DECDOS
+      CMPA #5
+      BEQ DECTRES
+      CMPA #9
+      BEQ DECCUATRO
+      JSR DECCINCO
+      RTS
+
+DECUNO
+      LDAA NUM
+      CMPA DIFZ
+      BLE  EDUNO *If i<= Num
+      LDAB #'X
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #1
+      STAA DIFZ
+      JMP DECUNO
+
+EDUNO
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+DECDOS
+      LDAB #'X
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAB #'L
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+DECTRES
+      LDAB #'L
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+DECCUATRO
+      LDAB #'X
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAB #'C
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+DECCINCO
+      LDAB #'L
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #5
+      STAA DIFZ
+CICLODECCINCO
+      LDAA NUM
+      CMPA DIFZ
+      BLE  EDCINCO *If i<= Num
+      LDAB #'X
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #1
+      STAA DIFZ
+      JMP CICLODECCINCO
+EDCINCO
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+***********
+* UNIDADES
+***********
+
+UNIDEC
+      LDAA NUM
+      * HAY 5 CASOS POSIBLES 1-3 (1)-> I^n ; 4 (2)-> IV ; 5 (3)-> V ;9 (4)-> IX; 600-800 (5)-> VI^n
+      CMPA #3
+      BLE UNIUNO
+      CMPA #4
+      BEQ UNIDOS
+      CMPA #5
+      BEQ UNITRES
+      CMPA #9
+      BEQ UNICUATRO
+      JSR UNICINCO
+      RTS
+
+UNIUNO
+      LDAA NUM
+      CMPA DIFZ
+      BLE  EUUNO *If i<= Num
+      LDAB #'I
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #1
+      STAA DIFZ
+      JMP UNIUNO
+
+EUUNO
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+UNIDOS
+      LDAB #'I
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAB #'V
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+UNITRES
+      LDAB #'V
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+UNICUATRO
+      LDAB #'I
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAB #'X
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
+      RTS
+
+UNICINCO
+      LDAB #'V
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #5
+      STAA DIFZ
+CICLOUNICINCO
+      LDAA NUM
+      CMPA DIFZ
+      BLE  ECUINCO *If i<= Num
+      LDAB #'I
+      STAB $00,y * SE ESCRIBE EL NUMERO ROMANO
+      INY
+      LDAA DIFZ
+      ADDA #1
+      STAA DIFZ
+      JMP CICLOUNICINCO
+ECUINCO
+      INX
+      LDAA $00,X
+      SUBA #$30
+      STAA NUM
       RTS
 
 *************
