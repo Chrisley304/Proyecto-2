@@ -21,6 +21,17 @@ U2    EQU $0002
 U3    EQU $0003
 U4    EQU $0004
 CONT  EQU $0005
+NUM   EQU $0006
+REF   EQU $0007
+REFT  EQU $0008
+REFC  EQU $0009
+REFL  EQU $0010
+REFD  EQU $0011
+REFM  EQU $0012
+CARACTER  EQU $0013
+RESULTADO  EQU $0014
+DIFZ  EQU $0015
+
 DUMP  EQU $0050
 
 *DECLARACION DE FUNCIONES	**********************************************************************
@@ -261,7 +272,7 @@ DIGCORRECTO
       RTS
 
 *************
-* CONVIERTE 
+* CONVIERTE
 *************
 CONVIERTE
       CLR U3 * Bandera error
@@ -271,11 +282,16 @@ CONVIERTE
       STAA RESULTADO
       LDAA U1 * Bandera digitos
       CMPA #$1 
-      BNE CONVDIGITO  * Si es digito (Hay RTS dentro)
+      BNE CDIGITO  * Si es digito (Hay RTS dentro)
       JSR CONVROMANO  * Si es romano
       LDAB U3
       CMPB #$1 * Se verifica si no hay un error
-      BNE TRANSFORMACIONHEX *No hay error y escribe el numero en memoria en ASCII
+      BEQ TERMCONV
+      JSR TRANSFORMACIONHEX *No hay error y escribe el numero en memoria en ASCII
+
+CDIGITO
+      JSR CONVDIGITO
+TERMCONV
       RTS
 *************
 * CONVIERTE ROMANO
@@ -288,7 +304,6 @@ CONVROMANO
       LDAA $00,Y  * Arreglo[n] -> CONT contiene el numero de caracteres que ingresaron    
 
       STAA CARACTER * Almacena el caracter en posicion actual
-      CLR ANTERIOR * Almacena el caracter en pos. anterior
       LDX #0      * X -> CONT=0
       CLR NUM 
       CLR REF * CIV
@@ -304,7 +319,7 @@ FOR
       ADDA #DUMP
       LDAB #DUMP 
       CBA * Se comprueba que no este fuera del arreglo i<n
-      BEQ NOENTRA
+      BLE NOENTRA
       JSR FOREACH
       LDAA CONT
       SUBA #1
@@ -323,40 +338,62 @@ FOREACH
 
       LDAB #'I 
       CBA            
-      BEQ ROMI
+      BNE NEXTV 
+      JSR ROMI
+      RTS
 
+NEXTV
       LDAB #'V
       CBA
-      BEQ ROMV
+      BNE NEXTX 
+      JSR ROMV
+      RTS
 
+NEXTX
       LDAB #'X
       CBA
-      BEQ ROMX
+      BNE NEXTL 
+      JSR ROMX
+      RTS
 
+NEXTL
       LDAB #'L
       CBA
-      BEQ ROML
+      BNE NEXTC 
+      JSR ROML
+      RTS
 
+NEXTC
       LDAB #'C
       CBA
-      BEQ ROMC
+      BNE NEXTD 
+      JSR ROMC
+      RTS
 
+NEXTD
       LDAB #'D
       CBA
-      BEQ ROMD
+      BNE NEXTM 
+      JSR ROMD
+      RTS
 
+NEXTM
       LDAB #'M
       CBA
-      BNE ROMM
+      BNE ERRORCROM
+      JSR ROMV
+      RTS
 
+ERRORCROM
       * si no es ninguno de los casos, es un error
-      JMP ERRORCONV
+      JSR ERRORCONV
+      RTS
 
 
 ROMI
       LDAB REF
       CMPB #3
-      BGE ERRORCONV   * Si REF>= 3 error
+      BGE ERRI   * Si REF>= 3 error
       INX *NUM ++
       LDAA REF
       ADDA #1
@@ -366,10 +403,14 @@ ROMI
       STAA CARACTER  
       RTS
 
+ERRI
+      JSR ERRORCONV
+      RTS
+
 ROMV
       LDAB REF
       CMPB #4
-      BGE ERRORCONV   * Si REF>= 4 error
+      BGE ERRV   * Si REF>= 4 error
       LDAB #5
       ABX * NUM = NUM + 5
       LDAA REF
@@ -382,7 +423,7 @@ ROMV
       BNE SIGROMV 
       LDAA REF
       CMPA #1
-      BNE ERRORCONV
+      BNE ERRV
       DEX * NUM - 1
       ADDA #1
       STAA REF * REF++
@@ -396,10 +437,14 @@ ROMV
 SIGROMV
       RTS
 
+ERRV
+      JSR ERRORCONV
+      RTS
+
 ROMX
       LDAB REF
       CMPB #3
-      BGE ERRORCONV   * Si REF>= 3 error
+      BGE ERRX   * Si REF>= 3 error
       LDAB #10
       ABX * NUM = NUM + 10
       ADDB #1
@@ -414,7 +459,7 @@ ROMX
       BNE SIGROMX
       LDAA REFT
       CMPA #1
-      BNE ERRORCONV
+      BNE ERRX
       DEX * NUM = NUM - 1
       ADDA #1
       STAA REFT * REFT ++
@@ -429,6 +474,9 @@ ROMX
       STAA CARACTER
 
 SIGROMX
+      RTS
+ERRX
+      JSR ERRORCONV
       RTS
 
 ROML
@@ -446,10 +494,10 @@ ROML
       CMPA #'X
       BNE SIGROML
       CMPB #1 * REFL =1?
-      BNE ERRORCONV
+      BNE ERRL
       LDAA REFT
       CMPA #0
-      BNE ERRORCONV
+      BNE ERRL
       XGDX * Para restarle 10 a X, se debe intercambiar con D
       SUBD #10 * D-10
       XGDX * NUM = D-10
@@ -465,11 +513,14 @@ ROML
 
 SIGROML
       RTS
+ERRL
+      JSR ERRORCONV
+      RTS
 
 ROMC
       LDAB REFC
       CMPB #3
-      BGE ERRORCONV   * Si REF>= 3 error
+      BGE ERRC   * Si REF>= 3 error
       LDAB #100
       ABX * NUM = NUM + 100
       LDAA REF
@@ -485,7 +536,7 @@ ROMC
       BNE SIGROMC
       LDAA REFC
       CMPA #1
-      BNE ERRORCONV
+      BNE ERRC
       XGDX * Para restarle 10 a X, se debe intercambiar con D
       SUBD #10 * D-10
       XGDX * NUM = D-10
@@ -503,6 +554,9 @@ ROMC
       STAA CARACTER
       
 SIGROMC
+      RTS
+ERRC
+      JSR ERRORCONV
       RTS
 
 ROMD
@@ -522,10 +576,10 @@ ROMD
       BNE SIGROMD
       LDAB REFC
       CMPB #0
-      BNE ERRORCONV
+      BNE ERRD
       LDAB REFD
       CMPB #1
-      BNE ERRORCONV
+      BNE ERRD
       XGDX * Para restarle 10 a X, se debe intercambiar con D
       SUBD #100 * D-100
       XGDX * NUM = D-100
@@ -544,6 +598,9 @@ ROMD
 
 SIGROMD
       RTS
+ERRD
+      JSR ERRORCONV
+      RTS
 
 ROMM
       XGDX * Para sumarle 500 a X, se debe intercambiar con D
@@ -559,10 +616,10 @@ ROMM
       LDAA $00,Y  * Arreglo[n]
       STAA CARACTER
       CMPA #'C * CAR = X ?
-      BNE SIGROMD
+      BNE SIGROMM
       LDAB REFM
       CMPB #1
-      BNE ERRORCONV
+      BNE ERRM
       XGDX * Para restarle 10 a X, se debe intercambiar con D
       SUBD #100 * D-100
       XGDX * NUM = D-100
@@ -579,7 +636,10 @@ ROMM
       LDAA $00,Y  * Arreglo[n]
       STAA CARACTER
   
-SIGROMD  
+SIGROMM  
+      RTS
+ERRM
+      JSR ERRORCONV
       RTS
 
 *************
@@ -588,11 +648,6 @@ SIGROMD
 
 CONVDIGITO 
       * Pendiente
-
-ITERA
-      LDAA CONT
-      SUBA #1
-      STAA CONT * recorre el i
       RTS
 
 *************
@@ -605,10 +660,17 @@ ERRORCONV
 
 
 * FUNCIONES TRANSFORMACION	**********************************************************************
-* Le llega el numero hexadecimal a colocar en decimal en la memoria en D
+* Le llega el numero hexadecimal a colocar en decimal en la memoria en X
+
 TRANSFORMACIONHEX 
+      CLR DIFZ *BANDERA DE YA VIMOS ALGO DIFERENTE A 0
+      LDD #DUMP   * Direccion base ($0050)
+      ADDB RESULTADO    * $Direccion base + N caracteres
+      XGDY * Se coloca la direccion a escribir en Y
+      XGDX  *Intercambia el contenido de X con el de D, por lo tanto D tiene el numero a transformar
+
+MILES     
       LDX #1000 * CARGAMOS DIVISOR
-      LDY #RESULTADO * UBICACION PARA EMPEZAR A GUARDAR
       IDIV      * D -> RESIDUO, X -> ENTERO
       PSHA      * GUARDAMOS RESIDUO EN PILA
       PSHB
@@ -622,7 +684,7 @@ TRANSFORMACIONHEX
       STAB $00,y * GUARDAMOS TOTAL RESPECTO A Y
       INY        * SIGUIENTE LOCALIDAD PARA GUARDAR SIGUIENTE NUM
       LDAA #$1   * ACTIVAMOS BANDERA DE YA VIMOS ALGO 
-      STAA U1     * ACTUALIZAMOS BANDERA
+      STAA DIFZ     * ACTUALIZAMOS BANDERA
 
 CENT
       LDX #100   * CARGAMOS DIVISOR
@@ -635,7 +697,7 @@ CENT
       CPX #$0000  * SI X ES DIFERENTE DE 0, NO CHECAMOS BANDERA
       BNE BANDERA1
  
-      LDAA U1    * CARGAMOS BANDERA
+      LDAA DIFZ    * CARGAMOS BANDERA
       BEQ DEC    * SI BANDERA ES 0 VAMOS A DECENAS
 
 BANDERA1
@@ -645,7 +707,7 @@ BANDERA1
       STAB $00,y * GUARDAMOS TOTAL RESPECTO A Y
       INY        * SIGUIENTE LOCALIDAD PARA GUARDAR SIGUIENTE NUM
       LDAA #$1   * ACTIVAMOS BANDERA DE YA VIMOS ALGO 
-      STAA U1     * ACTUALIZAMOS BANDERA
+      STAA DIFZ     * ACTUALIZAMOS BANDERA
       
 DEC
       LDX #10    * CARGAMOS DIVISOR
@@ -658,7 +720,7 @@ DEC
       CPX #$0000  * SI X ES DIFERENTE DE 0, NO CHECAMOS BANDERA
       BNE BANDERA2
  
-      LDAA U1    * CARGAMOS BANDERA
+      LDAA DIFZ    * CARGAMOS BANDERA
       BEQ UNI    * SI BANDERA ES 0 VAMOS A DECENAS
 
 BANDERA2
@@ -668,7 +730,7 @@ BANDERA2
       STAB $00,y * GUARDAMOS TOTAL RESPECTO A Y
       INY        * SIGUIENTE LOCALIDAD PARA GUARDAR SIGUIENTE NUM
       LDAA #$1   * ACTIVAMOS BANDERA DE YA VIMOS ALGO 
-      STAA U1     * ACTUALIZAMOS BANDERA
+      STAA DIFZ     * ACTUALIZAMOS BANDERA
 UNI
 
       LDX #1     * CARGAMOS DIVISOR
@@ -681,7 +743,7 @@ UNI
       CPX #$0000  * SI X ES DIFERENTE DE 0, NO CHECAMOS BANDERA
       BNE BANDERA3
  
-      LDAA U1    * CARGAMOS BANDERA
+      LDAA DIFZ    * CARGAMOS BANDERA
       BEQ FIN    * SI BANDERA ES 0 VAMOS A DECENAS
 
 BANDERA3
@@ -691,8 +753,7 @@ BANDERA3
       STAB $00,y * GUARDAMOS TOTAL RESPECTO A Y
       INY        * SIGUIENTE LOCALIDAD PARA GUARDAR SIGUIENTE NUM
       LDAA #$1   * ACTIVAMOS BANDERA DE YA VIMOS ALGO 
-      STAA U1     * ACTUALIZAMOS BANDERA
-
+      STAA DIFZ     * ACTUALIZAMOS BANDERA
 FIN
       RTS
 
