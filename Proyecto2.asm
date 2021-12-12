@@ -45,12 +45,12 @@ DUMP  EQU $0050
       JSR SERIAL
 
 START 
+      JSR LIMPIAMEMO
       CLR U1
       CLR U2
       CLR U3
       CLR U4
       CLR CONT
-      JSR LIMPIAMEMO
       JSR ENTRADA 
 
       LDAA U1
@@ -276,13 +276,11 @@ DIGCORRECTO
 *************
 CONVIERTE
       CLR U3 * Bandera error
-      LDAA DUMP
-      ADDA CONT
-      ADDA #2 * = y _vacio
-      STAA RESULTADO
+      XGDX
+      STAB RESULTADO
       LDAA U1 * Bandera digitos
       CMPA #$1 
-      BNE CDIGITO  * Si es digito (Hay RTS dentro)
+      BEQ CDIGITO  * Si es digito
       JSR CONVROMANO  * Si es romano
       LDAB U3
       CMPB #$1 * Se verifica si no hay un error
@@ -300,6 +298,7 @@ TERMCONV
 CONVROMANO 
       LDD #DUMP   * Direccion base ($0050)
       ADDB CONT    * $Direccion base + N caracteres
+      SUBB #1
       XGDY
       LDAA $00,Y  * Arreglo[n] -> CONT contiene el numero de caracteres que ingresaron    
 
@@ -381,7 +380,7 @@ NEXTM
       LDAB #'M
       CBA
       BNE ERRORCROM
-      JSR ROMV
+      JSR ROMM
       RTS
 
 ERRORCROM
@@ -442,7 +441,7 @@ ERRV
       RTS
 
 ROMX
-      LDAB REF
+      LDAB REFT
       CMPB #3
       BGE ERRX   * Si REF>= 3 error
       LDAB #10
@@ -664,8 +663,8 @@ ERRORCONV
 
 TRANSFORMACIONHEX 
       CLR DIFZ *BANDERA DE YA VIMOS ALGO DIFERENTE A 0
-      LDD #DUMP   * Direccion base ($0050)
-      ADDB RESULTADO    * $Direccion base + N caracteres
+      LDD #$0000
+      ADDB RESULTADO   * Direccion a escribir
       XGDY * Se coloca la direccion a escribir en Y
       XGDX  *Intercambia el contenido de X con el de D, por lo tanto D tiene el numero a transformar
 
@@ -737,8 +736,6 @@ UNI
       PULB       * CARGAMOS RESIDUO DE PASADA, AHORA DIVIDENDO
       PULA
       IDIV       * D -> RESIDUO, X -> ENTERO
-      PSHA       * GUARDAMOS RESIDUO EN PILA
-      PSHB
 
       CPX #$0000  * SI X ES DIFERENTE DE 0, NO CHECAMOS BANDERA
       BNE BANDERA3
@@ -1413,11 +1410,6 @@ ESCRIBECINCUENTA
       INY
       LDAB #'i
       STAB $00,y
-
-      INY
-      LDAB #'n
-      STAB $00,y
-
 
       INY
       LDAB #'n
