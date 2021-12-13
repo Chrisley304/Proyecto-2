@@ -66,6 +66,9 @@ START
       
       JSR COMPRUEBA
 
+      LDAA U3
+      BNE ERROR
+      
       JSR CONVIERTE
 
       LDAA U3
@@ -313,80 +316,147 @@ CONVROMANO
       CLR REFM
       * En este punto A tiene el valor de un caracter romano (i)
       
-FOR
-      LDAA CONT
-      ADDA #DUMP
-      LDAB #DUMP 
-      CBA * Se comprueba que no este fuera del arreglo i<n
-      BLE NOENTRA
-      JSR FOREACH
-      LDAA CONT
-      SUBA #1
-      STAA CONT
-      LDAA #$1
-      LDAB U3
-      CBA * Se verifica si no hay un error
-      BEQ NOENTRA
-      JMP FOR
-
-NOENTRA
-      RTS * Termina ciclo y termina de convertir
-
-FOREACH
+NEXTI
       LDAA CARACTER
-
       LDAB #'I 
       CBA            
-      BNE NEXTV 
+      BNE NEXTV
       JSR ROMI
-      RTS
+
+      ** INCREMENTA CONT
+      LDAA CONT * Incrementa el contador para comprobar que se haya terminado de leer
+      SUBA #1
+      STAA CONT
+      ** VERIFICA ERROR
+      LDAB  U3
+      CMPB #$1 * Se verifica si no hay un error
+      BNE NEXTI
+      RTS * SI HAY ERROR SE SALE
 
 NEXTV
+      LDAA CARACTER
       LDAB #'V
       CBA
       BNE NEXTX 
       JSR ROMV
-      RTS
+      
+      ** INCREMENTA CONT
+      LDAA CONT * Incrementa el contador para comprobar que se haya terminado de leer
+      SUBA #1
+      STAA CONT
+      ** VERIFICA ERROR
+      LDAB  U3
+      CMPB #$1 * Se verifica si no hay un error
+      BNE NEXTX
+      RTS * SI HAY ERROR SE SALE
 
 NEXTX
+      LDAA CARACTER
       LDAB #'X
       CBA
       BNE NEXTL 
       JSR ROMX
-      RTS
+      
+      ** INCREMENTA CONT
+      LDAA CONT * Incrementa el contador para comprobar que se haya terminado de leer
+      SUBA #1
+      STAA CONT
+      ** VERIFICA ERROR
+      LDAB  U3
+      CMPB #$1
+      CBA * Se verifica si no hay un error
+      BNE NEXTX
+      RTS * SI HAY ERROR SE SALE
 
 NEXTL
+      LDAA CARACTER
       LDAB #'L
       CBA
       BNE NEXTC 
       JSR ROML
-      RTS
+      
+      ** INCREMENTA CONT
+      LDAA CONT * Incrementa el contador para comprobar que se haya terminado de leer
+      SUBA #1
+      STAA CONT
+      ** VERIFICA ERROR
+      LDAB  U3
+      CMPB #$1
+      CBA * Se verifica si no hay un error
+      BNE NEXTC
+      RTS * SI HAY ERROR SE SALE
 
 NEXTC
+      LDAA CARACTER
       LDAB #'C
       CBA
       BNE NEXTD 
       JSR ROMC
-      RTS
+      
+      ** INCREMENTA CONT
+      LDAA CONT * Incrementa el contador para comprobar que se haya terminado de leer
+      SUBA #1
+      STAA CONT
+      ** VERIFICA ERROR
+      LDAB  U3
+      CMPB #$1
+      CBA * Se verifica si no hay un error
+      BNE NEXTC
+      RTS * SI HAY ERROR SE SALE
 
 NEXTD
+      LDAA CARACTER
       LDAB #'D
       CBA
       BNE NEXTM 
       JSR ROMD
-      RTS
+      
+      ** INCREMENTA CONT
+      LDAA CONT * Incrementa el contador para comprobar que se haya terminado de leer
+      SUBA #1
+      STAA CONT
+      ** VERIFICA ERROR
+      LDAB  U3
+      CMPB #$1
+      CBA * Se verifica si no hay un error
+      BNE NEXTM
+      RTS * SI HAY ERROR SE SALE
 
 NEXTM
+      LDAA CARACTER
       LDAB #'M
       CBA
       BNE ERRORCROM
       JSR ROMM
+      
+      ** INCREMENTA CONT
+      LDAA CONT * Incrementa el contador para comprobar que se haya terminado de leer
+      SUBA #1
+      STAA CONT
+      ** VERIFICA ERROR
+      LDAB  U3
+      CMPB #$1
+      CBA * Se verifica si no hay un error
+      BNE NEXTM
+      RTS * SI HAY ERROR SE SALE
+
+VALIDAFIN
+      LDAA CONT
+      ADDA #DUMP
+      LDAB #DUMP 
+      CBA * Se comprueba que no este fuera del arreglo i<n
+      BLE ERRORCROM
       RTS
 
 ERRORCROM
       * si no es ninguno de los casos, es un error
       JSR ERRORCONV
       RTS
+
+
+********
+* CASOS ROM
+******
 
 ROMI
       LDAB REF
@@ -398,7 +468,7 @@ ROMI
       STAA REF * REF = REF + 1
       DEY * Recorre el arreglo 
       LDAA $00,Y  * Arreglo[n]    
-      STAA CARACTER  
+      STAA CARACTER
       RTS
 
 ERRI
@@ -1665,7 +1735,6 @@ ESCRIBEQUINIENTOS
       INY
       LDAB #'o
       STAB $00,y
-      RTS
 
       INY
       LDAB #'s
