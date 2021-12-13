@@ -1,4 +1,7 @@
-* PROGRAMA ROMANO
+* Proyecto 2 EyPC: Convertidor
+* Creado por:
+* Luis Axel Nuñez Quintana
+* Christian Alejandro Leyva Mercado
 
 * DECLARACION CONSTANTES	**********************************************************************
 
