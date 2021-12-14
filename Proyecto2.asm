@@ -429,7 +429,7 @@ NEXTM
       LDAA CARACTER
       LDAB #'M
       CBA
-      BNE ERRORCROM
+      BNE VALIDAFIN
       JSR ROMM
       
       ** INCREMENTA CONT
@@ -438,8 +438,7 @@ NEXTM
       STAA CONT
       ** VERIFICA ERROR
       LDAB  U3
-      CMPB #$1
-      CBA * Se verifica si no hay un error
+      CMPB #$1 * Se verifica si no hay un error
       BNE NEXTM
       RTS * SI HAY ERROR SE SALE
 
@@ -448,7 +447,7 @@ VALIDAFIN
       ADDA #DUMP
       LDAB #DUMP 
       CBA * Se comprueba que no este fuera del arreglo i<n
-      BLE ERRORCROM
+      BNE ERRORCROM
       RTS
 
 ERRORCROM
@@ -674,7 +673,10 @@ ERRD
       RTS
 
 ROMM
-      XGDX * Para sumarle 500 a X, se debe intercambiar con D
+      LDAA REFM
+      CMPA #9
+      BGE ERRM
+      XGDX * Para sumarle 1000 a X, se debe intercambiar con D
       ADDD #1000 * D+1000
       XGDX * NUM = D+1000
       LDAA REF
@@ -722,7 +724,6 @@ CONVDIGITO
       XGDY
       LDAA $00,Y  * Arreglo[n] -> CONT contiene el numero de caracteres que ingresaron    
       SUBA #$30 * Se resta 30 debido a que en ASCII los numeros estan del 30-39
-      *LDX #0      * X -> CONT=0
       CLR DIFZ
       LDD #$0000
       ADDB RESULTADO   * Direccion a escribir
@@ -899,6 +900,7 @@ CICLOCENTCINCO
       ADDA #1
       STAA DIFZ
       JMP CICLOCENTCINCO
+
 ECCINCO
       INX
       LDAA $00,X
